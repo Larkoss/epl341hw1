@@ -1,8 +1,11 @@
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.PriorityQueue;
 import java.util.Scanner;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class AStar {
     // DIRECTIONS represents the possible directions for movement in the grid.
@@ -77,6 +80,22 @@ public class AStar {
         return neighbors;
     }
 
+        // getNeighbors() returns a list of valid neighbor nodes for a given node.
+    // A neighbor is considered valid if it is inside the grid and is not a BOMB.
+    private static ArrayList<Node> getNeighbors2(int[][] grid, Node node) {
+        ArrayList<Node> neighbors = new ArrayList<>();
+        for (int[] direction : DIRECTIONS) {
+            int newRow = node.row + direction[0];
+            int newCol = node.col + direction[1];
+            if (isValid(grid, newRow, newCol)) {
+                int newG = node.g + 1;
+                int newH = (int)euclideanDistance(newRow, newCol, grid.length - 1, grid[0].length - 1);
+                neighbors.add(new Node(newRow, newCol, newG, newH, node));
+            }
+        }
+        return neighbors;
+    }
+
     // This method takes in a Node object and reconstructs the path by following the
     // parent nodes
     // until the initial node is reached. It returns an ArrayList of Node objects
@@ -91,132 +110,176 @@ public class AStar {
     }
 
     public static void main(String[] args) {
-        try {
-            // Open and read from the input file
-            Scanner scanner = new Scanner(new File("input.txt"));
-            int rows = scanner.nextInt();
-            int cols = scanner.nextInt();
-            int[][] grid = new int[rows][cols];
-            scanner.nextLine();
-            for (int i = 0; i < rows; i++) {
-                String line = scanner.nextLine();
-                // Mark BOMBs as -1 and non-BOMBs as 0
-                for (int j = 0; j < cols; j++) {
-                    grid[i][j] = line.charAt(j) == BOMB ? -1 : 0;
-                }
-            }
-            int startRow = scanner.nextInt();
-            int startCol = scanner.nextInt();
-            int endRow = scanner.nextInt();
-            int endCol = scanner.nextInt();
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Create a new start node with the given start and end coordinates
-            PriorityQueue<Node> openSet2 = new PriorityQueue<>();
-            // Add the start node to the open set
-            Node startNode2 = new Node(startRow, startCol, 0,
-                    (int) euclideanDistance(startRow, startCol, endRow, endCol),
-                    null);
-            openSet2.add(startNode2);
-
-            while (!openSet2.isEmpty()) {
-                // Remove the node with the lowest f score from the open set
-                Node current = openSet2.remove();
-                // Check if the end node has been reached
-                if (current.row == endRow && current.col == endCol) {
-                    ArrayList<Node> path = reconstructPath(current);
-                    System.out.println("Path using Euclidean Distance");
-                    System.out.print("Path: ");
-                    for (Node node : path) {
-                        System.out.print("(" + node.row + ", " + node.col + ") ");
+        for (int k = 0; k < 1; k++) {
+            String filename = "input.txt";
+            try {
+                // Open and read from the input file
+                Scanner scanner = new Scanner(new File(filename));
+                int rows = scanner.nextInt();
+                int cols = scanner.nextInt();
+                // System.out.println(rows+ " "+cols);
+                int[][] grid = new int[rows][cols];
+                int[][] grid2 = new int[rows][cols];
+                scanner.nextLine();
+                for (int i = 0; i < rows; i++) {
+                    String line = scanner.nextLine();
+                    // System.out.println(line);
+                    // Mark BOMBs as -1 and non-BOMBs as 0
+                    for (int j = 0; j < cols; j++) {
+                        grid2[i][j] = line.charAt(j) == BOMB ? -1 : 0;
+                        grid[i][j] = grid2[i][j];
                     }
-                    System.out.println();
-                    break;
                 }
-                // Skip this node if it is a BOMB
-                if (grid[current.row][current.col] == -1) {
-                    continue;
-                }
-                // Mark this node as visited
-                grid[current.row][current.col] = -2;
-                // Check each neighbor of the current node
-                for (Node neighbor : getNeighbors(grid, current)) {
-                    // Skip this neighbor if it is a BOMB or has been visited
-                    if (grid[neighbor.row][neighbor.col] == -1 || grid[neighbor.row][neighbor.col] == -2) {
+                int startRow = scanner.nextInt();
+                int startCol = scanner.nextInt();
+                int endRow = scanner.nextInt();
+                int endCol = scanner.nextInt();                
+                ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                long startTime = System.nanoTime();
+                // Create a new start node with the given start and end coordinates
+                PriorityQueue<Node> openSet2 = new PriorityQueue<>();
+                int cEuclidean = 0;
+                // Add the start node to the open set
+                Node startNode2 = new Node(startRow, startCol, 0,
+                        (int) euclideanDistance(startRow, startCol, endRow, endCol),
+                        null);
+                openSet2.add(startNode2);
+
+                while (!openSet2.isEmpty()) {
+                    // Remove the node with the lowest f score from the open set
+                    Node current = openSet2.remove();
+                    cEuclidean++;
+                    // Check if the end node has been reached
+                    if (current.row == endRow && current.col == endCol) {
+                        ArrayList<Node> path = reconstructPath(current);
+                        System.out.println("Path using Euclidean Distance");
+                        System.out.print("Path: ");
+                        for (Node node : path) {
+                            System.out.print("(" + node.row + ", " + node.col + ") ");
+                        }
+                        System.out.println();
+                        break;
+                    }
+                    // Skip this node if it is a BOMB
+                    if (grid2[current.row][current.col] == -1) {
                         continue;
                     }
-                    // Update the g score of this neighbor if it is already in the open set
-                    if (openSet2.contains(neighbor)) {
-                        Node openSetNeighbor = null;
-                        for (Node node : openSet2) {
-                            if (node.equals(neighbor)) {
-                                openSetNeighbor = node;
-                                break;
-                            }
+                    // Mark this node as visited
+                    grid2[current.row][current.col] = -2;
+                    // Check each neighbor of the current node
+                    for (Node neighbor : getNeighbors2(grid2, current)) {
+                        // Skip this neighbor if it is a BOMB or has been visited
+                        if (grid2[neighbor.row][neighbor.col] == -1 || grid2[neighbor.row][neighbor.col] == -2) {
+                            continue;
                         }
-                        if (neighbor.g < openSetNeighbor.g) {
-                            openSet2.remove(openSetNeighbor);
+                        // Update the g score of this neighbor if it is already in the open set
+                        if (openSet2.contains(neighbor)) {
+                            Node openSetNeighbor = null;
+                            for (Node node : openSet2) {
+                                if (node.equals(neighbor)) {
+                                    openSetNeighbor = node;
+                                    break;
+                                }
+                            }
+                            if (neighbor.g < openSetNeighbor.g) {
+                                openSet2.remove(openSetNeighbor);
+                                openSet2.add(neighbor);
+                            }
+                        } else {
+                            // Add this neighbor to the open set if it is not already in it
                             openSet2.add(neighbor);
                         }
-                    } else {
-                        // Add this neighbor to the open set if it is not already in it
-                        openSet2.add(neighbor);
                     }
                 }
-            }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            PriorityQueue<Node> openSet1 = new PriorityQueue<>();
-            Node startNode1 = new Node(startRow, startCol, 0, manhattanDistance(startRow, startCol, endRow, endCol),
-                    null);
-            openSet1.add(startNode1);
-            while (!openSet1.isEmpty()) {
-                // Remove the node with the lowest f score from the open set
-                Node current = openSet1.remove();
-                // Check if the end node has been reached
-                if (current.row == endRow && current.col == endCol) {
-                    ArrayList<Node> path = reconstructPath(current);
-                    System.out.println("Path using Manhattan Distance");
-                    System.out.print("Path: ");
-                    for (Node node : path) {
-                        System.out.print("(" + node.row + ", " + node.col + ") ");
+
+                if (openSet2.isEmpty()) {
+                    System.out.println("Euclidean heurestic didn't find a path");
+                }
+                long stopTime = System.nanoTime();
+                double totalTimeEucledian = (stopTime - startTime) / 1000000;
+                System.out.println("Eucledian run for: " + totalTimeEucledian + "ms");
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                int cManhattan = 0;
+                startTime = System.nanoTime();
+                PriorityQueue<Node> openSet1 = new PriorityQueue<>();
+                Node startNode1 = new Node(startRow, startCol, 0, manhattanDistance(startRow, startCol, endRow, endCol),
+                        null);
+                openSet1.add(startNode1);
+                while (!openSet1.isEmpty()) {
+                    // Remove the node with the lowest f score from the open set
+                    Node current = openSet1.remove();
+                    cManhattan++;
+                    // Check if the end node has been reached
+                    if (current.row == endRow && current.col == endCol) {
+                        ArrayList<Node> path = reconstructPath(current);
+                        System.out.println("Path using Manhattan Distance");
+                        System.out.print("Path: ");
+                        for (Node node : path) {
+                            System.out.print("(" + node.row + ", " + node.col + ") ");
+                        }
+                        System.out.println();
+                        break;
                     }
-                    System.out.println();
-                    break;
-                }
-                // Skip this node if it is a BOMB
-                if (grid[current.row][current.col] == -1) {
-                    continue;
-                }
-                // Mark this node as visited
-                grid[current.row][current.col] = -3;
-                // Check each neighbor of the current node
-                for (Node neighbor : getNeighbors(grid, current)) {
-                    // Skip this neighbor if it is a BOMB or has been visited
-                    if (grid[neighbor.row][neighbor.col] == -1 || grid[neighbor.row][neighbor.col] == -3) {
+                    // Skip this node if it is a BOMB
+                    if (grid2[current.row][current.col] == -1) {
                         continue;
                     }
-                    // Update the g score of this neighbor if it is already in the open set
-                    if (openSet1.contains(neighbor)) {
-                        Node openSetNeighbor = null;
-                        for (Node node : openSet1) {
-                            if (node.equals(neighbor)) {
-                                openSetNeighbor = node;
-                                break;
-                            }
+                    // Mark this node as visited
+                    grid2[current.row][current.col] = -3;
+                    // Check each neighbor of the current node
+                    for (Node neighbor : getNeighbors(grid2, current)) {
+                        // Skip this neighbor if it is a BOMB or has been visited
+                        if (grid2[neighbor.row][neighbor.col] == -1 || grid2[neighbor.row][neighbor.col] == -3) {
+                            continue;
                         }
-                        if (neighbor.g < openSetNeighbor.g) {
-                            openSet1.remove(openSetNeighbor);
+                        // Update the g score of this neighbor if it is already in the open set
+                        if (openSet1.contains(neighbor)) {
+                            Node openSetNeighbor = null;
+                            for (Node node : openSet1) {
+                                if (node.equals(neighbor)) {
+                                    openSetNeighbor = node;
+                                    break;
+                                }
+                            }
+                            if (neighbor.g < openSetNeighbor.g) {
+                                openSet1.remove(openSetNeighbor);
+                                openSet1.add(neighbor);
+                            }
+                        } else {
+                            // Add this neighbor to the open set if it is not already in it
                             openSet1.add(neighbor);
                         }
-                    } else {
-                        // Add this neighbor to the open set if it is not already in it
-                        openSet1.add(neighbor);
                     }
                 }
-            }
 
-            // System.out.println("No path found.");
-        } catch (FileNotFoundException e) {
-            System.out.println("File not found.");
+                if (openSet1.isEmpty()) {
+                    System.out.println("Manhattan heurestic didn't find a path");
+                }
+                stopTime = System.nanoTime();
+                double totalTimeManhattan = (stopTime - startTime) / 1000000;
+                System.out.println("Manhattan run for: " + totalTimeManhattan + "ms");
+                //////////////////////////////////////////////////////////////////////////////////////////////
+                try {
+ 
+                    // Open given file in append mode by creating an
+                    // object of BufferedWriter class
+                    BufferedWriter out = new BufferedWriter(
+                        new FileWriter("results.txt", true));
+         
+                    // Writing on output stream
+                    out.write("" + totalTimeEucledian + " " + cEuclidean + " " + totalTimeManhattan + " " + cManhattan + "\n");
+                    // Closing the connection
+                    out.close();
+                }
+         
+                // Catch block to handle the exceptions
+                catch (IOException e) {
+                    // Display message when exception occurs
+                    System.out.println("Exception occurred" + e);
+                }
+            } catch (FileNotFoundException e) {
+                System.out.println("File not found.");
+            }
         }
     }
 }
